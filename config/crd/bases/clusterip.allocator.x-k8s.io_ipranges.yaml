@@ -1,0 +1,74 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: ipranges.clusterip.allocator.x-k8s.io
+spec:
+  group: clusterip.allocator.x-k8s.io
+  names:
+    kind: IPRange
+    listKind: IPRangeList
+    plural: ipranges
+    singular: iprange
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      description: IPRange is the Schema for the ipranges API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: IPRangeSpec defines the desired state of IPRange
+          properties:
+            addresses:
+              description: Addresses represent the IP addresses of the range and its
+                status. Each address may be associated to one kubernetes object (i.e.
+                Services)
+              items:
+                type: string
+              type: array
+              x-kubernetes-list-type: set
+            name:
+              maxLength: 15
+              minLength: 1
+              type: string
+            range:
+              maxLength: 128
+              minLength: 8
+              type: string
+          type: object
+        status:
+          description: IPRangeStatus defines the observed state of IPRange
+          properties:
+            free:
+              description: Free represent the number of IP addresses that are not
+                allocated in the Range
+              format: int64
+              type: integer
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

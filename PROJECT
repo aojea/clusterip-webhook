@@ -1,0 +1,7 @@
+domain: allocator.x-k8s.io
+repo: github.com/aojea/clusterip-webhook
+resources:
+- group: clusterip
+  kind: IPRange
+  version: v1
+version: "2"

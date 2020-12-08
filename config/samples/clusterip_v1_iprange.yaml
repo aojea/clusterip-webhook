@@ -1,0 +1,7 @@
+apiVersion: clusterip.allocator.x-k8s.io/v1
+kind: IPRange
+metadata:
+  name: iprange-sample
+spec:
+  # Add fields here
+  foo: bar
