@@ -1,5 +1,5 @@
 /*
-
+Copyright 2020.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,11 @@ limitations under the License.
 package v1
 
 import (
+	"fmt"
+	"net"
+
 	"k8s.io/apimachinery/pkg/runtime"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -53,23 +57,43 @@ var _ webhook.Validator = &IPRange{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *IPRange) ValidateCreate() error {
 	iprangelog.Info("validate create", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object creation.
-	return nil
+	// Create only allows to set the IP range
+	if len(r.Spec.Addresses) > 0 {
+		return fmt.Errorf("Addresses can not be allocated on creation")
+	}
+	_, _, err := net.ParseCIDR(r.Spec.Range)
+	return err
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *IPRange) ValidateUpdate(old runtime.Object) error {
+	oldIPRange := old.(*IPRange)
 	iprangelog.Info("validate update", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object update.
-	return nil
+	// Range is inmutable after creation
+	if r.Spec.Range != oldIPRange.Spec.Range {
+		return fmt.Errorf("Range can not be changed after creation")
+	}
+	// the Range was already validated on creation
+	_, ipRange, _ := net.ParseCIDR(r.Spec.Range)
+	allErrors := []error{}
+	for _, address := range r.Spec.Addresses {
+		ip := net.ParseIP(address)
+		if ip == nil {
+			allErrors = append(allErrors, fmt.Errorf("invalid ip address %s", address))
+		}
+		if !ipRange.Contains(ip) {
+			allErrors = append(allErrors, fmt.Errorf("ip address %s out of range %s", address, ipRange.String()))
+		}
+	}
+	return utilerrors.NewAggregate(allErrors)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *IPRange) ValidateDelete() error {
 	iprangelog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
+	// An IPRange can not be deleted if there are still ip addresses allocated
+	if len(r.Spec.Addresses) > 0 {
+		return fmt.Errorf("IPRange can not be deleted if addresses are allocated")
+	}
 	return nil
 }

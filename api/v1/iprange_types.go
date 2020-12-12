@@ -1,5 +1,5 @@
 /*
-
+Copyright 2020.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,16 +25,12 @@ import (
 
 // IPRangeSpec defines the desired state of IPRange
 type IPRangeSpec struct {
-	// +kubebuilder:validation:MaxLength=15
-	// +kubebuilder:validation:MinLength=1
-	Name string `json:"name,omitempty"`
-
 	// Range represent the IP range in CIDR format
 	// i.e. 10.0.0.0/16 or 2001:db2::/64
 	// +kubebuilder:validation:MaxLength=128
 	// +kubebuilder:validation:MinLength=8
-
 	Range string `json:"range,omitempty"`
+
 	// +optional
 	// Addresses represent the IP addresses of the range and its status.
 	// Each address may be associated to one kubernetes object (i.e. Services)
@@ -50,6 +46,7 @@ type IPRangeStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // IPRange is the Schema for the ipranges API
 type IPRange struct {
