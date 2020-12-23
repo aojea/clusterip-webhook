@@ -50,3 +50,21 @@ webhooks:
     - UPDATE
     resources:
     - ipranges
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-service
+  failurePolicy: Ignore
+  name: validate-externalip.webhook.svc
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - services
