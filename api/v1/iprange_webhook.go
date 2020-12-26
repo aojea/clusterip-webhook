@@ -36,8 +36,6 @@ func (r *IPRange) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
 // +kubebuilder:webhook:path=/mutate-clusterip-allocator-x-k8s-io-v1-iprange,mutating=true,failurePolicy=fail,groups=clusterip.allocator.x-k8s.io,resources=ipranges,verbs=create;update,versions=v1,name=miprange.kb.io
 
 var _ webhook.Defaulter = &IPRange{}
@@ -49,8 +47,7 @@ func (r *IPRange) Default() {
 	// TODO(user): fill in your defaulting logic.
 }
 
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-// +kubebuilder:webhook:verbs=create;update,path=/validate-clusterip-allocator-x-k8s-io-v1-iprange,mutating=false,failurePolicy=fail,groups=clusterip.allocator.x-k8s.io,resources=ipranges,versions=v1,name=viprange.kb.io
+// +kubebuilder:webhook:verbs=create;update;delete,path=/validate-clusterip-allocator-x-k8s-io-v1-iprange,mutating=false,failurePolicy=fail,groups=clusterip.allocator.x-k8s.io,resources=ipranges,versions=v1,name=viprange.kb.io
 
 var _ webhook.Validator = &IPRange{}
 
@@ -61,8 +58,12 @@ func (r *IPRange) ValidateCreate() error {
 	if len(r.Spec.Addresses) > 0 {
 		return fmt.Errorf("Addresses can not be allocated on creation")
 	}
-	_, _, err := net.ParseCIDR(r.Spec.Range)
-	return err
+	_, ipRange, err := net.ParseCIDR(r.Spec.Range)
+	if err != nil {
+		return err
+	}
+	r.Spec.Range = ipRange.String()
+	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type

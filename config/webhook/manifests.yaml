@@ -48,6 +48,7 @@ webhooks:
     operations:
     - CREATE
     - UPDATE
+    - DELETE
     resources:
     - ipranges
 - clientConfig:

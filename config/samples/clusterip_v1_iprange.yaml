@@ -6,6 +6,4 @@ spec:
   # Add fields here
   range: 192.168.0.1/24
   addresses:
-  - 192.168.0.2
-  - 192.168.0.22
   
