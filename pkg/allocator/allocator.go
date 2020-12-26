@@ -1,13 +1,15 @@
 package allocator
 
 import (
-	"math/big"
+	"context"
+	"fmt"
 	"net"
 
-	"k8s.io/kubernetes/pkg/registry/core/service/ipallocator"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clusteripv1 "github.com/aojea/clusterip-webhook/api/v1"
+	"github.com/go-logr/logr"
 )
 
 // assume that the IPRange object is well-known for the moment
@@ -18,34 +20,52 @@ type Range struct {
 	Log    logr.Logger
 }
 
-var _ ipallocator.Interface = &Range{}
-
 func (r *Range) Allocate(ip net.IP) error {
 	ctx := context.Background()
 	log := r.Log.WithValues("iprange", ip)
-	var ipRange &clusteripv1.IPRange
-	ipRange.Spec.Addresses = ip.String()
-	r.Patch(ctx, )
+	ipRange := &clusteripv1.IPRange{}
+	key := client.ObjectKey{Namespace: "kube-system", Name: "allocator"}
+	if err := r.client.Get(ctx, key, ipRange); err != nil {
+		log.Error(err, "unable to fetch IPRange")
+		return nil
+	}
+	addresses := sets.NewString(ipRange.Spec.Addresses...)
+	if addresses.Has(ip.String()) {
+		return fmt.Errorf("ip %s already allocated", ip.String())
+	}
+	addresses.Insert(ip.String())
+	ipRange.Spec.Addresses = addresses.List()
+	if err := r.client.Update(ctx, ipRange); err != nil {
+		log.Error(err, "unable to fetch IPRange")
+		return err
+	}
+	return nil
 }
 
 func (r *Range) AllocateNext() (net.IP, error) {
 	ctx := context.Background()
-	var ipRange &clusteripv1.IPRange
-    if err := r.Get(ctx, req.NamespacedName, &ipRange); err != nil {
-        log.Error(err, "unable to fetch IPRange")
-        return nil
+	log := r.Log.WithName("iprange")
+	ipRange := &clusteripv1.IPRange{}
+	key := client.ObjectKey{Namespace: "kube-system", Name: "allocator"}
+	if err := r.client.Get(ctx, key, ipRange); err != nil {
+		log.Error(err, "unable to fetch IPRange")
+		return nil, err
 	}
 	// Range is validated by the webhook
-	_, subnet, _ := net.ParseCIDR(ipRange.Spec.Range)
-	return subnet
+	ip, _, _ := net.ParseCIDR(ipRange.Spec.Range)
+	return ip, nil
 }
 
-func (r *Range) Release(net.IP) error {
+func (r *Range) Release(ip net.IP) error {
 	ctx := context.Background()
 	log := r.Log.WithValues("iprange", ip)
-	var ipRange &clusteripv1.IPRange
-	ipRange.Spec.Addresses = ip.String()
-	r.Patch(ctx, )
+	ipRange := &clusteripv1.IPRange{}
+	key := client.ObjectKey{Namespace: "kube-system", Name: "allocator"}
+	if err := r.client.Get(ctx, key, ipRange); err != nil {
+		log.Error(err, "unable to fetch IPRange")
+		return err
+	}
+	return nil
 }
 
 func (r *Range) ForEach(func(net.IP)) {
@@ -54,18 +74,20 @@ func (r *Range) ForEach(func(net.IP)) {
 
 func (r *Range) CIDR() net.IPNet {
 	ctx := context.Background()
-	var ipRange &clusteripv1.IPRange
-    if err := r.Get(ctx, req.NamespacedName, &ipRange); err != nil {
-        log.Error(err, "unable to fetch IPRange")
-        return nil
+	log := r.Log.WithName("iprange")
+	ipRange := &clusteripv1.IPRange{}
+	key := client.ObjectKey{Namespace: "kube-system", Name: "allocator"}
+	if err := r.client.Get(ctx, key, ipRange); err != nil {
+		log.Error(err, "unable to fetch IPRange")
+		return net.IPNet{}
 	}
 	// Range is validated by the webhook
 	_, subnet, _ := net.ParseCIDR(ipRange.Spec.Range)
-	return subnet
+	return *subnet
 
 }
 
 // For testing
-func (r *Range) Has(ip net.IP) bool{
-
+func (r *Range) Has(ip net.IP) bool {
+	return true
 }
