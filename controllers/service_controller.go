@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	"github.com/go-logr/logr"
@@ -66,13 +67,14 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	key := client.ObjectKey{Namespace: "kube-system", Name: "allocator"}
 	if err := r.Get(ctx, key, ipRange); err != nil {
 		log.Error(err, "unable to fetch IPRange")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, nil
 	}
 	addresses := sets.NewString(ipRange.Spec.Addresses...)
 	// reconcile
 	diff := svcIPs.Difference(addresses)
 	if len(diff) > 0 {
-		log.Info("allocator is not synced", diff)
+		msg := fmt.Sprintf("allocator is not syced, diff: %v", diff)
+		log.Info(msg)
 	}
 	ipRange.Spec.Addresses = svcIPs.List()
 	if err := r.Update(ctx, ipRange); err != nil {
