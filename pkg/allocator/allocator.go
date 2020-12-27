@@ -7,6 +7,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clusteripv1 "github.com/aojea/clusterip-webhook/api/v1"
@@ -53,6 +54,7 @@ func NewAllocatorCIDRRange(cidr *net.IPNet, client client.Client) (*Range, error
 	err := client.Create(ctx, &ipRange)
 	return &Range{
 		client: client,
+		Log:    ctrl.Log.WithName("iprange"),
 	}, err
 }
 
