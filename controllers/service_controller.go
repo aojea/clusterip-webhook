@@ -18,11 +18,17 @@ package controllers
 
 import (
 	"context"
+	"net"
 
 	"github.com/go-logr/logr"
+
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	clusteripv1 "github.com/aojea/clusterip-webhook/api/v1"
 )
 
 // ServiceReconciler reconciles a Service object
@@ -34,18 +40,51 @@ type ServiceReconciler struct {
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=clusterip.allocator.x-k8s.io,resources=ipranges,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=clusterip.allocator.x-k8s.io,resources=ipranges/status,verbs=get;update;patch
 
 func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = r.Log.WithValues("service", req.NamespacedName)
+	log := r.Log.WithValues("service", req.NamespacedName)
 
-	// your logic here
+	// get all services
+	var svcList v1.ServiceList
+	if err := r.List(ctx, &svcList); err != nil {
+		log.Error(err, "unable to list services")
+		return ctrl.Result{}, err
+	}
+	// obtain all assigned clusterIPs
+	svcIPs := sets.NewString()
+	for _, svc := range svcList.Items {
+		ip := net.ParseIP(svc.Spec.ClusterIP)
+		if ip != nil {
+			svcIPs.Insert(svc.Spec.ClusterIP)
+		}
 
+	}
+	// obtain current allocator addresses
+	ipRange := &clusteripv1.IPRange{}
+	key := client.ObjectKey{Namespace: "kube-system", Name: "allocator"}
+	if err := r.Get(ctx, key, ipRange); err != nil {
+		log.Error(err, "unable to fetch IPRange")
+		return ctrl.Result{}, err
+	}
+	addresses := sets.NewString(ipRange.Spec.Addresses...)
+	// reconcile
+	diff := svcIPs.Difference(addresses)
+	if len(diff) > 0 {
+		log.Info("allocator is not synced", diff)
+	}
+	ipRange.Spec.Addresses = svcIPs.List()
+	if err := r.Update(ctx, ipRange); err != nil {
+		log.Error(err, "unable to update IPRange")
+		return ctrl.Result{}, err
+	}
+	//
 	return ctrl.Result{}, nil
 }
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		// For().
+		For(&v1.Service{}).
 		Complete(r)
 }

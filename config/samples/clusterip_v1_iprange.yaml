@@ -1,9 +1,8 @@
 apiVersion: clusterip.allocator.x-k8s.io/v1
 kind: IPRange
 metadata:
-  name: iprange1
+  name: allocator
 spec:
   # Add fields here
-  range: 192.168.0.1/24
+  range: 10.96.0.0/12
   addresses:
-  
