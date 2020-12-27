@@ -14,14 +14,12 @@ import (
 )
 
 func TestMain(t *testing.T) {
-	ptrBool := false
 	key := client.ObjectKey{Namespace: "kube-system", Name: "allocator"}
 	ctx := context.Background()
 	ipRange := &clusteripv1.IPRange{}
 	// specify testEnv configuration
 	testEnv := &envtest.Environment{
-		CRDDirectoryPaths:  []string{filepath.Join("../..", "config", "crd", "bases")},
-		UseExistingCluster: &ptrBool,
+		CRDDirectoryPaths: []string{filepath.Join("../..", "config", "crd", "bases")},
 	}
 
 	// start testEnv
@@ -39,29 +37,32 @@ func TestMain(t *testing.T) {
 
 	cs, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatalf(err.Error())
 	}
-	ip, subnet, _ := net.ParseCIDR("10.96.0.2/12")
+	ip, subnet, _ := net.ParseCIDR("10.96.0.2/24")
 	r, err := NewAllocatorCIDRRange(subnet, cs)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatalf(err.Error())
 	}
 	if err := cs.Get(ctx, key, ipRange); err != nil {
-		t.Errorf(err.Error())
+		t.Fatalf(err.Error())
 	}
 	t.Logf("new iprange object %v", ipRange)
 	// Allocate an specific IP address
 	err = r.Allocate(ip)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatalf(err.Error())
 	}
-	alloc, err := r.AllocateNext()
-	if err != nil {
-		t.Errorf(err.Error())
+	for i := 0; i < 254; i++ {
+		alloc, err := r.AllocateNext()
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
+		t.Logf("allocated %v", alloc)
 	}
-	t.Logf("allocated %v", alloc)
+	// Check the new object
 	if err := cs.Get(ctx, key, ipRange); err != nil {
-		t.Errorf(err.Error())
+		t.Fatalf(err.Error())
 	}
 	t.Logf("new Range addresses %v", ipRange.Spec.Addresses)
 

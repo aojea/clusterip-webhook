@@ -2,11 +2,14 @@ package allocator
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	utilnet "k8s.io/utils/net"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -27,6 +30,12 @@ type Interface interface {
 	// For testing
 	Has(ip net.IP) bool
 }
+
+var (
+	ErrFull              = errors.New("range is full")
+	ErrAllocated         = errors.New("provided IP is already allocated")
+	ErrMismatchedNetwork = errors.New("the provided network does not match the current range")
+)
 
 // assume that the IPRange object is well-known for the moment
 // namespace kube-system name ipv4range
@@ -89,9 +98,38 @@ func (r *Range) AllocateNext() (net.IP, error) {
 		log.Error(err, "unable to fetch IPRange")
 		return nil, err
 	}
+	// find an empty address within the range
 	// Range is validated by the webhook
-	ip, _, _ := net.ParseCIDR(ipRange.Spec.Range)
-	return ip, nil
+	_, cidr, _ := net.ParseCIDR(ipRange.Spec.Range)
+	addresses := sets.NewString(ipRange.Spec.Addresses...)
+	max := utilnet.RangeSize(cidr)
+	if int64(len(addresses)) >= max {
+		return net.IP{}, ErrFull
+	}
+
+	offset := rand.Int63n(max)
+	var i int64
+	for i = 0; i < max; i++ {
+		at := (offset + i) % max
+		ip, err := utilnet.GetIndexedIP(cidr, int(at))
+		if err != nil {
+			return net.IP{}, ErrAllocated
+		}
+		if !addresses.Has(ip.String()) {
+			err := r.Allocate(ip)
+			// it can happen we fail to allocate
+			// because it was already allocated by
+			// other apiserver
+			// if err is already allocated continue
+			// otherwise return the error
+			if err != nil {
+				continue
+			}
+			return ip, nil
+		}
+	}
+
+	return net.IP{}, ErrFull
 }
 
 func (r *Range) Release(ip net.IP) error {
