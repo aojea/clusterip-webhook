@@ -85,6 +85,9 @@ func (r *IPRange) ValidateUpdate(old runtime.Object) error {
 		if !ipRange.Contains(ip) {
 			allErrors = append(allErrors, fmt.Errorf("ip address %s out of range %s", address, ipRange.String()))
 		}
+		if ip.Equal(ipRange.IP) {
+			allErrors = append(allErrors, fmt.Errorf("ip address %s reserved", ip.String()))
+		}
 	}
 	return utilerrors.NewAggregate(allErrors)
 }
