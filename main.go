@@ -67,6 +67,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = (&clusteripv1.IPRange{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "IPRange")
+			os.Exit(1)
+		}
+	}
+
 	if err = (&controllers.ServiceReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Service"),
