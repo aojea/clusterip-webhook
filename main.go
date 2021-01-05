@@ -30,8 +30,9 @@ import (
 
 	clusteripv1 "github.com/aojea/clusterip-webhook/api/v1"
 	"github.com/aojea/clusterip-webhook/controllers"
-	"github.com/aojea/clusterip-webhook/pkg/service"
+
 	// +kubebuilder:scaffold:imports
+	service_webhook "github.com/aojea/clusterip-webhook/pkg/service"
 )
 
 var (
@@ -77,7 +78,7 @@ func main() {
 		// Setup service webhooks
 		setupLog.Info("setting up webhook server")
 		hookServer := mgr.GetWebhookServer()
-		svcAllocator, err := service.NewClusterIPAllocator(mgr.GetClient())
+		svcAllocator, err := service_webhook.NewClusterIPAllocator(mgr.GetClient())
 		if err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "ServiceAllocator")
 			os.Exit(1)
