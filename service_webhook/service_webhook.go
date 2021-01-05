@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package service
+package main
 
 import (
 	"context"
@@ -26,7 +26,6 @@ import (
 	"github.com/aojea/clusterip-webhook/pkg/allocator"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -65,7 +64,7 @@ func (a *ClusterIPAllocator) Handle(ctx context.Context, req admission.Request) 
 	}
 
 	// clusterIP is set, validate and allocate it in the API IPRange object
-	if len(svc.Spec.ClusterIP) > 0 && svc.Spec.ClusterIP != v1.ClusterIPNone {
+	if len(svc.Spec.ClusterIP) > 0 && svc.Spec.ClusterIP != corev1.ClusterIPNone {
 		ip := net.ParseIP(svc.Spec.ClusterIP)
 		if ip == nil {
 			return admission.Errored(http.StatusInternalServerError, fmt.Errorf("invalid IP address %s", ip))

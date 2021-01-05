@@ -26,13 +26,10 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	clusteripv1 "github.com/aojea/clusterip-webhook/api/v1"
 	"github.com/aojea/clusterip-webhook/controllers"
-
 	// +kubebuilder:scaffold:imports
-	service_webhook "github.com/aojea/clusterip-webhook/pkg/service"
 )
 
 var (
@@ -75,15 +72,6 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "IPRange")
 			os.Exit(1)
 		}
-		// Setup service webhooks
-		setupLog.Info("setting up webhook server")
-		hookServer := mgr.GetWebhookServer()
-		svcAllocator, err := service_webhook.NewClusterIPAllocator(mgr.GetClient())
-		if err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "ServiceAllocator")
-			os.Exit(1)
-		}
-		hookServer.Register("/allocate-v1-clusterip", &webhook.Admission{Handler: svcAllocator})
 	}
 
 	if err = (&controllers.ServiceReconciler{
