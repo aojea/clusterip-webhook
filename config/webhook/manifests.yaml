@@ -24,6 +24,24 @@ webhooks:
     - UPDATE
     resources:
     - ipranges
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /allocate-v1-clusterip
+  failurePolicy: Fail
+  name: msvc.kb.io
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - services
 
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -51,21 +69,3 @@ webhooks:
     - DELETE
     resources:
     - ipranges
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-service
-  failurePolicy: Ignore
-  name: validate-externalip.webhook.svc
-  rules:
-  - apiGroups:
-    - ""
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - services
