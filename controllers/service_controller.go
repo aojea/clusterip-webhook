@@ -63,6 +63,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			svcIPs.Insert(svc.Spec.ClusterIP)
 		}
 	}
+	log.Info("Service reconciler", "ClusterIPs", svcIPs.List())
 
 	// obtain current allocator addresses
 	ipRange := &clusteripv1.IPRange{}
@@ -85,8 +86,11 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	// reconcile the differences
 	addresses := sets.NewString(ipRange.Spec.Addresses...)
+	log.Info("Service reconciler", "IPRangeList", addresses.List())
+
 	diff := svcIPs.Difference(addresses)
-	if len(diff) == 0 {
+	log.Info("Service reconciler", "Difference", diff.List())
+	if diff.Len() == 0 {
 		return ctrl.Result{}, nil
 	}
 	msg := fmt.Sprintf("allocator is not synced, diff: %v", diff)
@@ -104,5 +108,6 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.Service{}).
+		Owns(&clusteripv1.IPRange{}).
 		Complete(r)
 }
