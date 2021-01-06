@@ -24,24 +24,6 @@ webhooks:
     - UPDATE
     resources:
     - ipranges
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: webhook-service
-      namespace: system
-      path: /allocate-v1-clusterip
-  failurePolicy: Fail
-  name: msvc.kb.io
-  rules:
-  - apiGroups:
-    - ""
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - services
 
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
