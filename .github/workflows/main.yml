@@ -71,6 +71,8 @@ jobs:
         run: |
           kubectl get pods -A
           kubectl get services -A
+          kubectl get iprange -A
+          sleep 10
           kubectl -n kube-system get iprange allocator -o yaml
           kubectl create service clusterip test1 --tcp 80 --clusterip 10.96.11.13
           kubectl create service clusterip test2 --tcp 80
