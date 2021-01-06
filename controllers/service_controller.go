@@ -62,7 +62,6 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			svcIPs.Insert(svc.Spec.ClusterIP)
 		}
 	}
-	log.Info("Service reconciler", "ClusterIPs", svcIPs.List())
 
 	// obtain current allocator addresses
 	ipRange := &clusteripv1.IPRange{}
@@ -85,7 +84,6 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	// reconcile the differences
 	addresses := sets.NewString(ipRange.Spec.Addresses...)
-	log.Info("Service reconciler", "IPRangeList", addresses.List())
 	if svcIPs.Equal(addresses) {
 		return ctrl.Result{}, nil
 	}
