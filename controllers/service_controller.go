@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"net"
 
 	"github.com/go-logr/logr"
@@ -87,14 +86,12 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// reconcile the differences
 	addresses := sets.NewString(ipRange.Spec.Addresses...)
 	log.Info("Service reconciler", "IPRangeList", addresses.List())
-
-	diff := svcIPs.Difference(addresses)
-	log.Info("Service reconciler", "Difference", diff.List())
-	if diff.Len() == 0 {
+	if svcIPs.Equal(addresses) {
 		return ctrl.Result{}, nil
 	}
-	msg := fmt.Sprintf("allocator is not synced, diff: %v", diff)
-	log.Info(msg)
+
+	log.Info("allocator is not synced", "Difference IPRange", addresses.Difference(svcIPs))
+	log.Info("allocator is not synced", "Difference Services", svcIPs.Difference(addresses))
 
 	ipRange.Spec.Addresses = svcIPs.List()
 	if err := r.Update(ctx, ipRange); err != nil {
