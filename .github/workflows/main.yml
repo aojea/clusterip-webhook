@@ -49,6 +49,7 @@ jobs:
           make docker-build
           kind load docker-image controller:v1
           make deploy
+          kubectl wait --for=condition=available --timeout=60s deployment/alloc-controller-manager -n alloc-system
 
       - name: Checkout allocator webhook
         uses: actions/checkout@v2
@@ -64,9 +65,11 @@ jobs:
           kind load docker-image allocator:v1
           # deploy the webhook
           kubectl apply -f manifests.yaml
+          kubectl wait --for=condition=available --timeout=60s deployment/allocator-webhook -n system
 
       - name: Check services
         run: |
+          kubectl get pods -A
           kubectl get services -A
           kubectl -n kube-system get iprange allocator -o yaml
           kubectl create service clusterip test1 --tcp 80 --clusterip 10.96.11.13
