@@ -26,6 +26,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	utilnet "k8s.io/utils/net"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -64,6 +65,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	// obtain current allocator addresses
 	ipRange := &clusteripv1.IPRange{}
+	// TODO hardcoded to kube-system allocator object by now
 	key := client.ObjectKey{Namespace: "kube-system", Name: "allocator"}
 	if err := r.Get(ctx, key, ipRange); err != nil {
 		log.Error(err, "unable to fetch IPRange")
@@ -72,16 +74,26 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	addresses := sets.NewString(ipRange.Spec.Addresses...)
 	// reconcile
 	diff := svcIPs.Difference(addresses)
-	if len(diff) > 0 {
-		msg := fmt.Sprintf("allocator is not syced, diff: %v", diff)
-		log.Info(msg)
+	if len(diff) == 0 {
+		return ctrl.Result{}, nil
 	}
+	msg := fmt.Sprintf("allocator is not synced, diff: %v", diff)
+	log.Info(msg)
+
 	ipRange.Spec.Addresses = svcIPs.List()
 	if err := r.Update(ctx, ipRange); err != nil {
 		log.Error(err, "unable to update IPRange")
 		return ctrl.Result{}, err
 	}
-	//
+
+	// Range is validated by the webhook
+	_, cidr, _ := net.ParseCIDR(ipRange.Spec.Range)
+	max := utilnet.RangeSize(cidr)
+	ipRange.Status.Free = max - int64(svcIPs.Len())
+	if err := r.Status().Update(ctx, ipRange); err != nil {
+		log.Error(err, "unable to update CronJob status")
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, nil
 }
 
