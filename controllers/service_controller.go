@@ -47,7 +47,8 @@ type ServiceReconciler struct {
 
 func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("service", req.NamespacedName)
-
+	log.Info("Starting reconcile", "request", req)
+	defer log.Info("Finishing reconcile", "request", req)
 	// get all services
 	var svcList v1.ServiceList
 	if err := r.List(ctx, &svcList); err != nil {
@@ -61,18 +62,29 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		if ip != nil {
 			svcIPs.Insert(svc.Spec.ClusterIP)
 		}
-
 	}
+
 	// obtain current allocator addresses
 	ipRange := &clusteripv1.IPRange{}
 	// TODO hardcoded to kube-system allocator object by now
 	key := client.ObjectKey{Namespace: "kube-system", Name: "allocator"}
 	if err := r.Get(ctx, key, ipRange); err != nil {
 		log.Error(err, "unable to fetch IPRange")
+		// don't retry, just log only
 		return ctrl.Result{}, nil
 	}
+
+	// update the status
+	// Range is validated by the webhook
+	_, cidr, _ := net.ParseCIDR(ipRange.Spec.Range)
+	max := utilnet.RangeSize(cidr)
+	ipRange.Status.Free = max - int64(svcIPs.Len())
+	if err := r.Status().Update(ctx, ipRange); err != nil {
+		log.Error(err, "unable to update ipRange status")
+		return ctrl.Result{}, err
+	}
+	// reconcile the differences
 	addresses := sets.NewString(ipRange.Spec.Addresses...)
-	// reconcile
 	diff := svcIPs.Difference(addresses)
 	if len(diff) == 0 {
 		return ctrl.Result{}, nil
@@ -86,14 +98,6 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// Range is validated by the webhook
-	_, cidr, _ := net.ParseCIDR(ipRange.Spec.Range)
-	max := utilnet.RangeSize(cidr)
-	ipRange.Status.Free = max - int64(svcIPs.Len())
-	if err := r.Status().Update(ctx, ipRange); err != nil {
-		log.Error(err, "unable to update CronJob status")
-		return ctrl.Result{}, err
-	}
 	return ctrl.Result{}, nil
 }
 
