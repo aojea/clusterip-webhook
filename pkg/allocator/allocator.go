@@ -83,7 +83,7 @@ func (r *Range) Allocate(ip net.IP) error {
 	addresses.Insert(ip.String())
 	ipRange.Spec.Addresses = addresses.List()
 	if err := r.client.Update(ctx, ipRange); err != nil {
-		log.Error(err, "unable to fetch IPRange")
+		log.Error(err, "unable to update IPRange")
 		return err
 	}
 	return nil
