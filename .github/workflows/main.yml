@@ -69,6 +69,7 @@ jobs:
           kubectl -n kube-system get iprange allocator -o yaml
           kubectl create service clusterip test1 --tcp 80 --clusterip 10.96.11.13
           kubectl create service clusterip test2 --tcp 80
+          sleep 10
           kubectl get services -A
           kubectl -n kube-system get iprange allocator -o yaml
 
